@@ -1,11 +1,4 @@
-package com.kemflo.utils;
-import cn.hutool.core.io.FileUtil;
-import com.kemflo.remote.WechatNoticeClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.util.ResourceUtils;
-import sun.misc.BASE64Encoder;
+package com.kemflo.service.impl;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -13,58 +6,79 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.*;
 
-@Component
-public class MyNoticeUtil {
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.kemflo.model.MsgTypeEnum;
+import com.kemflo.remote.WechatNoticeClient;
+import com.kemflo.service.NoticeService;
+
+import lombok.extern.slf4j.Slf4j;
+import sun.misc.BASE64Encoder;
+
+@Service
+@Slf4j
+public class NoticeServiceImpl implements NoticeService {
     @Autowired
     private WechatNoticeClient wechatNoticeClient;
 
-    @Value("${wechat.notice.key}")
-    private String NOTICE_KEY;
+    @Value("${wechat.notice.robot}")
+    private String NOTICE_ROBOT_URL;
 
     /**
      * 发送文本消息
      */
-    public void sendTextMsg() {
+    @Override
+    public void sendTextMsg(String content) {
         Map<String, Object> sendMap = new HashMap<>();
-        //设置消息类型 txt文本
-        sendMap.put("msgtype", "text");
+        // 设置消息类型 txt文本
+        sendMap.put("msgtype", MsgTypeEnum.MSG_TYPE_TEXT.getValue());
+        // 消息内容
         Map<String, String> contentMap = new HashMap<>();
-        contentMap.put("content", "你好，我是资讯测试机器人");
+        contentMap.put("content", content);
         sendMap.put("text", contentMap);
-        wechatNoticeClient.sendWechatMsg(NOTICE_KEY, sendMap);
+        // 表示是否开启重复消息检查，0表示否，1表示是，默认0
+        sendMap.put("enable_duplicate_check", 1);
+        // 表示是否重复消息检查的时间间隔，默认1800s，最大不超过4小时
+        sendMap.put("duplicate_check_interval", 1800);
+        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
     }
 
     /**
      * 发送markdown文本消息
      */
-    public void sendMarkDownTextMsg() {
+    @Override
+    public void sendMarkDownTextMsg(String content) {
         Map<String, Object> sendMap = new HashMap<>();
-        //设置消息类型 markdown文本
+        // 设置消息类型 markdown文本
         sendMap.put("msgtype", "markdown");
         Map<String, String> contentMap = new HashMap<>();
-        contentMap.put("content", "JCccc,您的账户余额已到账<font color=\\\"warning\\\">15000元</font>，开心起来吧。\\\n" +
-                "         >付款方:<font color=\\\"comment\\\">白日做梦</font>");
+        contentMap.put("content",
+            "您的会议室已经预定，稍后会同步到`邮箱`  \n>**事项详情**  \n>事　项：<font color=\"info\">开会</font>  \n>组织者：@miglioguan  \n>参与者：@miglioguan、@kunliu、@jamdeezhou、@kanexiong、@kisonwang  \n>  \n>会议室：<font color=\"info\">广州TIT 1楼 301</font>  \n>日　期：<font color=\"warning\">2018年5月18日</font>  \n>时　间：<font color=\"comment\">上午9:00-11:00</font>  \n>  \n>请准时参加会议。  \n>  \n>如需修改会议信息，请点击：[修改会议信息](https://work.weixin.qq.com)");
         sendMap.put("markdown", contentMap);
-        wechatNoticeClient.sendWechatMsg(NOTICE_KEY, sendMap);
+        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
     }
 
     /**
      * 发送图片消息
      */
-    public void sendImageMsg() {
-        String url = "D:\\projects\\mes-to-qiyewechat\\src\\main\\resources\\static\\alarm.png";
+    @Override
+    public void sendImageMsg(String content) {
+        String url = "https://wework.qpic.cn/wwpic/556466_GbaFIr-4SLqP4uH_1700310830/0";
         Map<String, Object> sendMap = new HashMap<>();
         sendMap.put("msgtype", "image");
         Map<String, String> contentMap = new HashMap<>();
         contentMap.put("md5", getMd5(url));
         contentMap.put("base64", getBase64(url).replaceAll("\r|\n", ""));
         sendMap.put("image", contentMap);
-        wechatNoticeClient.sendWechatMsg(NOTICE_KEY, sendMap);
+        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
     }
 
     /**
      * 发送图文消息
      */
+    @Override
     public void sendImageAndTxtMsg(String content) {
         Map<String, Object> sendMap = new HashMap<>();
         sendMap.put("msgtype", "news");
@@ -73,15 +87,14 @@ public class MyNoticeUtil {
         Map<String, Object> obj = new HashMap<>();
         obj.put("title", "yst-mes");
         obj.put("description", content);
-        obj.put("url","https://mes.yakimagroup.com:8999/");
-        obj.put("picurl", "http://res.mail.qq.com/node/ww/wwopenmng/images/independent/doc/test_pic_msg1.png");
+        obj.put("url", "https://mes.yakimagroup.com:8999/");
+        obj.put("picurl", "https://wework.qpic.cn/wwpic/556466_GbaFIr-4SLqP4uH_1700310830/0");
         list.add(obj);
         contentMap.put("articles", list);
         contentMap.put("mentioned_list", Arrays.asList("@all"));
         sendMap.put("news", contentMap);
-        wechatNoticeClient.sendWechatMsg(NOTICE_KEY, sendMap);
+        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
     }
-
 
     /**
      * 图片转为base64编码
@@ -89,7 +102,7 @@ public class MyNoticeUtil {
     public String getBase64(String imgFile) {
         InputStream in = null;
         byte[] data = null;
-        //  读取图片字节数组
+        // 读取图片字节数组
         try {
             in = new FileInputStream(imgFile);
             data = new byte[in.available()];
