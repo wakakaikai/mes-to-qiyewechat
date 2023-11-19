@@ -16,14 +16,6 @@ public interface WechatConstant {
 
     Integer ERR_CODE_SUCCESS = 0;
 
-    String YST_MES = "yst-mes";
-
-    String YST_MES_SCAN = "yst-mes-scan";
-
-    String YST_MES_WS = "yst-mes-ws";
-
-    String YST_MES_REPORT = "yst-mes-report";
-
     /**
      * MES token本地缓存刷新时间，单位秒
      */

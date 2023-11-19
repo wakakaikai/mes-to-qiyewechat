@@ -6,15 +6,17 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.*;
 
+import com.kemflo.config.WxCpProperties;
+import me.chanjar.weixin.common.util.fs.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.kemflo.model.MsgTypeEnum;
 import com.kemflo.remote.WechatNoticeClient;
 import com.kemflo.service.NoticeService;
 
 import lombok.extern.slf4j.Slf4j;
+import me.chanjar.weixin.common.api.WxConsts;
 import sun.misc.BASE64Encoder;
 
 @Service
@@ -22,9 +24,9 @@ import sun.misc.BASE64Encoder;
 public class NoticeServiceImpl implements NoticeService {
     @Autowired
     private WechatNoticeClient wechatNoticeClient;
+    @Autowired
+    private WxCpProperties wxCpProperties;
 
-    @Value("${wechat.notice.robot}")
-    private String NOTICE_ROBOT_URL;
 
     /**
      * 发送文本消息
@@ -33,7 +35,7 @@ public class NoticeServiceImpl implements NoticeService {
     public void sendTextMsg(String content) {
         Map<String, Object> sendMap = new HashMap<>();
         // 设置消息类型 txt文本
-        sendMap.put("msgtype", MsgTypeEnum.MSG_TYPE_TEXT.getValue());
+        sendMap.put("msgtype", WxConsts.MassMsgType.TEXT);
         // 消息内容
         Map<String, String> contentMap = new HashMap<>();
         contentMap.put("content", content);
@@ -42,7 +44,7 @@ public class NoticeServiceImpl implements NoticeService {
         sendMap.put("enable_duplicate_check", 1);
         // 表示是否重复消息检查的时间间隔，默认1800s，最大不超过4小时
         sendMap.put("duplicate_check_interval", 1800);
-        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
+        wechatNoticeClient.sendRobotMsg(wxCpProperties.getRobotUrl(), sendMap);
     }
 
     /**
@@ -57,7 +59,7 @@ public class NoticeServiceImpl implements NoticeService {
         contentMap.put("content",
             "您的会议室已经预定，稍后会同步到`邮箱`  \n>**事项详情**  \n>事　项：<font color=\"info\">开会</font>  \n>组织者：@miglioguan  \n>参与者：@miglioguan、@kunliu、@jamdeezhou、@kanexiong、@kisonwang  \n>  \n>会议室：<font color=\"info\">广州TIT 1楼 301</font>  \n>日　期：<font color=\"warning\">2018年5月18日</font>  \n>时　间：<font color=\"comment\">上午9:00-11:00</font>  \n>  \n>请准时参加会议。  \n>  \n>如需修改会议信息，请点击：[修改会议信息](https://work.weixin.qq.com)");
         sendMap.put("markdown", contentMap);
-        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
+        wechatNoticeClient.sendRobotMsg(wxCpProperties.getRobotUrl(), sendMap);
     }
 
     /**
@@ -72,7 +74,7 @@ public class NoticeServiceImpl implements NoticeService {
         contentMap.put("md5", getMd5(url));
         contentMap.put("base64", getBase64(url).replaceAll("\r|\n", ""));
         sendMap.put("image", contentMap);
-        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
+        wechatNoticeClient.sendRobotMsg(wxCpProperties.getRobotUrl(), sendMap);
     }
 
     /**
@@ -93,7 +95,7 @@ public class NoticeServiceImpl implements NoticeService {
         contentMap.put("articles", list);
         contentMap.put("mentioned_list", Arrays.asList("@all"));
         sendMap.put("news", contentMap);
-        wechatNoticeClient.sendRobotMsg(NOTICE_ROBOT_URL, sendMap);
+        wechatNoticeClient.sendRobotMsg(wxCpProperties.getRobotUrl(), sendMap);
     }
 
     /**

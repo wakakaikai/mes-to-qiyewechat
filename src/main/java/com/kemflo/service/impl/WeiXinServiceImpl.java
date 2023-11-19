@@ -19,7 +19,6 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.dtflys.forest.exceptions.ForestNetworkException;
@@ -28,9 +27,11 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.kemflo.common.WechatConstant;
+import com.kemflo.config.WxCpProperties;
 import com.kemflo.model.TextCardMessage;
 import com.kemflo.model.TextMessage;
 import com.kemflo.model.WxText;
@@ -38,7 +39,6 @@ import com.kemflo.model.WxTextCard;
 import com.kemflo.remote.WechatNoticeClient;
 import com.kemflo.service.WeiXinService;
 
-import cn.hutool.core.map.MapUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -50,24 +50,16 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 public class WeiXinServiceImpl implements WeiXinService {
-    @Value("${wechat.corpId}")
-    private String corpId;
-    @Value("${wechat.corpSecret}")
-    private String corpSecret;
-    @Value("${wechat.agentId}")
-    private Integer agentId;
-    @Value("${wechat.notice.wechatTokenUrl}")
-    private String wechatTokenUrl;
 
-    @Value("${wechat.notice.sendMsgUrl}")
-    private String sendMsgUrl;
-
+    @Autowired
+    private WxCpProperties wxCpProperties;
     private VelocityEngine velocityEngine;
     @Autowired
     private WechatNoticeClient wechatNoticeClient;
 
     private String getWechatToken() {
-        String requestUrl = MessageFormat.format(wechatTokenUrl, corpId, corpSecret);
+        String requestUrl = MessageFormat.format(wxCpProperties.getTokenUrl(), wxCpProperties.getCorpId(),
+            wxCpProperties.getCorpSecret());
         try {
             Map<String, Object> map = wechatNoticeClient.getWechatToken(requestUrl);
             if (map.containsKey(ERR_CODE)
@@ -83,7 +75,8 @@ public class WeiXinServiceImpl implements WeiXinService {
     /**
      * 创建一个线程池去定时更新缓存中token
      */
-    ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+    ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(),
+        (new ThreadFactoryBuilder()).setNameFormat("WechatToken-pool-%d").build());
 
     /**
      * 设置更新时间, 定时去更新缓存中的数据
@@ -136,7 +129,7 @@ public class WeiXinServiceImpl implements WeiXinService {
         message.setTouser(StringUtils.join(toArr, "|"));
         // 1.2必需
         message.setMsgtype("text");
-        message.setAgentid(agentId);
+        message.setAgentid(wxCpProperties.getAgentId());
         WxText wxText = new WxText();
         wxText.setContent(content);
         message.setText(wxText);
@@ -171,7 +164,7 @@ public class WeiXinServiceImpl implements WeiXinService {
         textCardMessage.setTouser(StringUtils.join(toArr, "|"));
         // 1.2必需
         textCardMessage.setMsgtype("textcard");
-        textCardMessage.setAgentid(agentId);
+        textCardMessage.setAgentid(wxCpProperties.getAgentId());
         WxTextCard wxTextCard = new WxTextCard();
         wxTextCard.setTitle(title);
         wxTextCard.setDescription(getVelocityMailText(dataMap, templateName));
@@ -189,15 +182,13 @@ public class WeiXinServiceImpl implements WeiXinService {
      * @param jsonMessage 发送的消息
      */
     public void messageResponse(String accessToken, String jsonMessage) {
-        String url = MessageFormat.format(sendMsgUrl, accessToken);
+        String url = MessageFormat.format(wxCpProperties.getSendMsgUrl(), accessToken);
         // 4.调用接口，发送消息
         Map map = wechatNoticeClient.sendMsg(url, jsonMessage);
         // 5.消息成功处理
-        if (MapUtil.isNotEmpty(map)) {
-            if (ERR_CODE_SUCCESS == Integer.parseInt(map.get(ERR_CODE).toString())) {
-                log.info("消息发送成功{}", jsonMessage);
-                return;
-            }
+        if (map.containsKey(ERR_CODE) && ERR_CODE_SUCCESS == Integer.parseInt(map.get(ERR_CODE).toString())) {
+            log.info("消息发送成功{}", jsonMessage);
+            return;
         }
         log.info("消息发送失败{}", map);
     }

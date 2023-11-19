@@ -4,12 +4,10 @@ import static com.kemflo.common.WechatConstant.AUTHORIZATION;
 import static com.kemflo.common.WechatConstant.MES_TOKEN_TTL;
 
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,21 +36,19 @@ public class MesServiceImpl implements MesService {
     private String baseUrl;
     @Value("${mes.authUrl}")
     private String authUrl;
-
     @Value("${mes.client_id}")
     private String clientId;
-
     @Value("${mes.client_secret}")
     private String clientSecret;
     @Autowired
     private MesClient mesClient;
     @Autowired
     private NoticeService noticeService;
-
     /**
      * 创建一个线程池去定时更新缓存中token
      */
-    ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+    ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(),
+        (new ThreadFactoryBuilder()).setNameFormat("MesToken-pool-%d").build());
 
     /**
      * 设置更新时间, 定时去更新缓存中的数据

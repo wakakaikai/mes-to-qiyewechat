@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.kemflo</groupId>
-    <artifactId>mes-to-qiyewechat</artifactId>
+    <artifactId>wechat-cp</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>mes-to-qiyewechat</name>
-    <description>mes-to-qiyewechat</description>
+    <name>wechat-cp</name>
+    <description>对接企业微信</description>
     <properties>
         <java.version>1.8</java.version>
     </properties>
@@ -67,6 +67,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-velocity</artifactId>
             <version>1.4.7.RELEASE</version>
+        </dependency>
+        <!--企业微信 Java SDK-->
+        <dependency>
+            <groupId>com.github.binarywang</groupId>
+            <artifactId>weixin-java-cp</artifactId>
+            <version>4.5.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

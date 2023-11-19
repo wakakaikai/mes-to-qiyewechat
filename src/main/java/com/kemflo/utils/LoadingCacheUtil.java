@@ -24,7 +24,7 @@ public class LoadingCacheUtil {
      */
     private static final long GUAVA_CACHE_SIZE = 10000;
     /**
-     * 缓存时间：分钟
+     * 缓存时间：秒
      */
     private static final long GUAVA_CACHE_SECONDS = 5400;
     /**
