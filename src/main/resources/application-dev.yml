@@ -19,17 +19,19 @@ forest:
   log-response-content: true   # 打开/关闭Forest响应内容日志（默认为 false）
 
 wechat:
-  corpId: ww17a41727c5808e2a
-  corpSecret: IgSvLlXC7RonN-ogM0PiK_UjQ1PN-ODR6RDf3u8X050
-  agentId: 1000002
-  token: "nbJQ9WLbwoXU7IYHpFvpz3xkMmn"
-  aes-key: "NfoeVTAwjteMLEbIGlBvzkitjDP8tI2R2UfyGFWGHSd"
-  # 群机器人发送消息
-  robotUrl: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=9269444d-f3db-4c2b-a60c-01a1a8569c96
-  # 获取access_token
-  tokenUrl: https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={0}&corpsecret={1}
-  # 发送应用消息
-  sendMsgUrl: https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}
+  cp:
+    corpId: ww17a41727c5808e2a
+    appConfigs:
+     -  agentId: 1000002
+        secret: "IgSvLlXC7RonN-ogM0PiK_UjQ1PN-ODR6RDf3u8X050"
+        token: "nbJQ9WLbwoXU7IYHpFvpz3xkMmn"
+        aes-key: "NfoeVTAwjteMLEbIGlBvzkitjDP8tI2R2UfyGFWGHSd"
+    # 群机器人发送消息
+    robotUrl: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=9269444d-f3db-4c2b-a60c-01a1a8569c96
+    # 获取access_token
+    tokenUrl: https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={0}&corpsecret={1}
+    # 发送应用消息
+    sendMsgUrl: https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}
 mes:
   baseUrl: https://mesqas.yakimagroup.com:8998
   authUrl: https://mesqas.yakimagroup.com:8998/cloudt/authorization/oauth2/token

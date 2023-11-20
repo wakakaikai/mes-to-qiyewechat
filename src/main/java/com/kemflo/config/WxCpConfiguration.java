@@ -4,11 +4,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 
 import com.google.common.collect.Lists;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
+
 import com.google.common.collect.Maps;
 import com.kemflo.handle.*;
 
@@ -19,13 +24,16 @@ import me.chanjar.weixin.cp.api.impl.WxCpServiceImpl;
 import me.chanjar.weixin.cp.config.impl.WxCpDefaultConfigImpl;
 import me.chanjar.weixin.cp.constant.WxCpConsts;
 import me.chanjar.weixin.cp.message.WxCpMessageRouter;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author Kevin
  */
-@Component
 @Slf4j
+@Component
 public class WxCpConfiguration {
+    @Autowired
+    private WxCpProperties properties;
     private LogHandler logHandler;
     private NullHandler nullHandler;
     private LocationHandler locationHandler;
@@ -33,8 +41,6 @@ public class WxCpConfiguration {
     private MsgHandler msgHandler;
     private UnsubscribeHandler unsubscribeHandler;
     private SubscribeHandler subscribeHandler;
-
-    private WxCpProperties properties;
 
     private static Map<Integer, WxCpMessageRouter> routers = Maps.newHashMap();
     private static Map<Integer, WxCpService> cpServices = Maps.newHashMap();
@@ -53,35 +59,14 @@ public class WxCpConfiguration {
         this.properties = properties;
     }
 
-    public static Map<Integer, WxCpMessageRouter> getRouters() {
-        return routers;
+    public static WxCpMessageRouter getRouter(Integer agentId) {
+        return routers.get(agentId);
     }
-
-    @Bean
-    public WxCpService wxCpService() {
-        WxCpDefaultConfigImpl configStorage = new WxCpDefaultConfigImpl();
-        configStorage.setCorpId(this.properties.getCorpId());
-        configStorage.setCorpSecret(this.properties.getCorpSecret());
-        configStorage.setAgentId(this.properties.getAgentId());
-        configStorage.setToken(this.properties.getToken());
-        configStorage.setAesKey(this.properties.getAesKey());
-        WxCpService wxCpService = new WxCpServiceImpl();
-        wxCpService.setWxCpConfigStorage(configStorage);
-        log.info("初始化微信配置{}", configStorage);
-
-        cpServices.put(this.properties.getAgentId(), wxCpService);
-        getCpService(this.properties.getAgentId(), this.properties.getCorpSecret(), this.properties.getCorpId());
-        return wxCpService;
+    public static WxCpService getCpService(Integer agentId) {
+        return cpServices.get(agentId);
     }
-
-    public WxCpService getCpService(Integer agentId, String secret, String corpId) {
-        AppConfig appConfig = AppConfig.builder().agentId(agentId).secret(secret).build();
-
-        List<AppConfig> list = Lists.newArrayList();
-        list.add(appConfig);
-        properties.setAppConfigs(list);
-        properties.setCorpId(corpId);
-
+    @PostConstruct
+    public void initServices() {
         cpServices = this.properties.getAppConfigs().stream().map(a -> {
             WxCpDefaultConfigImpl configStorage = new WxCpDefaultConfigImpl();
             configStorage.setCorpId(this.properties.getCorpId());
@@ -89,15 +74,16 @@ public class WxCpConfiguration {
             configStorage.setCorpSecret(a.getSecret());
             configStorage.setToken(a.getToken());
             configStorage.setAesKey(a.getAesKey());
-            WxCpServiceImpl service = new WxCpServiceImpl();
-            service.setWxCpConfigStorage(configStorage);
-            routers.put(a.getAgentId(), this.newRouter(service));
-            return service;
+            WxCpService wxCpService = new WxCpServiceImpl();
+            wxCpService.setWxCpConfigStorage(configStorage);
+            routers.put(a.getAgentId(), newRouter(wxCpService));
+            log.info("初始化配置加载成功{}\n{}",a.getAgentId(), configStorage);
+            return wxCpService;
         }).collect(Collectors.toMap(service -> service.getWxCpConfigStorage().getAgentId(), a -> a));
-        return cpServices.get(agentId);
     }
 
     private WxCpMessageRouter newRouter(WxCpService wxCpService) {
+        log.info("执行router...");
         WxCpMessageRouter newRouter = new WxCpMessageRouter(wxCpService);
 
         // 记录所有事件的日志 （异步执行）

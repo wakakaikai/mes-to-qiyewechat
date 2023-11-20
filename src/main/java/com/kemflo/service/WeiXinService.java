@@ -15,7 +15,7 @@ public interface WeiXinService {
      * @param toArr 发送人， 之间用 ,号分隔
      * @param content 发送的内容, 普通文本内容
      */
-    void sendSimpleText(String[] toArr, String content);
+    void sendSimpleText(String[] toArr, String content, Integer agentId, String corpSecret);
 
     /**
      * 发送邮件 velocity 模板邮件
@@ -25,5 +25,6 @@ public interface WeiXinService {
      * @param dataMap 发送模板邮件填充数据
      * @param templateName 模板名称
      */
-    void sendVelocityText(String title, String[] toArr, Map<String, Object> dataMap, String templateName);
+    void sendVelocityText(String title, String[] toArr, Map<String, Object> dataMap, String templateName,
+        Integer agentId, String corpSecret);
 }

@@ -11,6 +11,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -50,16 +51,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 public class WeiXinServiceImpl implements WeiXinService {
-
-    @Autowired
+    @Resource
     private WxCpProperties wxCpProperties;
     private VelocityEngine velocityEngine;
     @Autowired
     private WechatNoticeClient wechatNoticeClient;
 
-    private String getWechatToken() {
-        String requestUrl = MessageFormat.format(wxCpProperties.getTokenUrl(), wxCpProperties.getCorpId(),
-            wxCpProperties.getCorpSecret());
+    private String getWechatToken(String corpSecret) {
+        String requestUrl = MessageFormat.format(wxCpProperties.getTokenUrl(), wxCpProperties.getCorpId(), corpSecret);
         try {
             Map<String, Object> map = wechatNoticeClient.getWechatToken(requestUrl);
             if (map.containsKey(ERR_CODE)
@@ -70,6 +69,10 @@ public class WeiXinServiceImpl implements WeiXinService {
             log.error("获取token失败{}", ex.getMessage());
         }
         return StringUtils.EMPTY;
+    }
+
+    private String getTokenCaCheKey(String corpSecret) {
+        return ACCESS_TOKEN.concat(":").concat(corpSecret);
     }
 
     /**
@@ -85,14 +88,22 @@ public class WeiXinServiceImpl implements WeiXinService {
         .refreshAfterWrite(WECHAT_TOKEN_TTL, TimeUnit.SECONDS).build(new CacheLoader<String, String>() {
             @Override
             public String load(String key) {
-                return getWechatToken();
+                if (StringUtils.isNotBlank(key)) {
+                    return getWechatToken(key);
+                }
+                return null;
             }
 
             // 异步加载缓存
             @Override
             public ListenableFuture<String> reload(String key, String oldValue) {
                 // 定义任务。
-                ListenableFutureTask<String> futureTask = ListenableFutureTask.create(() -> getWechatToken());
+                ListenableFutureTask<String> futureTask = ListenableFutureTask.create(() -> {
+                    if (StringUtils.isNotBlank(key)) {
+                        return getWechatToken(key);
+                    }
+                    return null;
+                });
                 // 异步执行任务
                 executor.execute(futureTask);
                 return futureTask;
@@ -111,12 +122,12 @@ public class WeiXinServiceImpl implements WeiXinService {
     }
 
     @Override
-    public void sendSimpleText(String[] toArr, String content) {
+    public void sendSimpleText(String[] toArr, String content, Integer agentId, String corpSecret) {
         if (ArrayUtils.isEmpty(toArr)) {
             return;
         }
         // 1. 获取 token
-        String accessToken = wechatTokenCache.getIfPresent(ACCESS_TOKEN);
+        String accessToken = wechatTokenCache.getIfPresent(getTokenCaCheKey(corpSecret));
         if (StringUtils.isBlank(accessToken)) {
             log.error("发送文本消息获取token失败");
             return;
@@ -129,7 +140,7 @@ public class WeiXinServiceImpl implements WeiXinService {
         message.setTouser(StringUtils.join(toArr, "|"));
         // 1.2必需
         message.setMsgtype("text");
-        message.setAgentid(wxCpProperties.getAgentId());
+        message.setAgentid(agentId);
         WxText wxText = new WxText();
         wxText.setContent(content);
         message.setText(wxText);
@@ -146,12 +157,13 @@ public class WeiXinServiceImpl implements WeiXinService {
     }
 
     @Override
-    public void sendVelocityText(String title, String[] toArr, Map<String, Object> dataMap, String templateName) {
+    public void sendVelocityText(String title, String[] toArr, Map<String, Object> dataMap, String templateName,
+        Integer agentId, String corpSecret) {
         if (ArrayUtils.isEmpty(toArr)) {
             return;
         }
         // 1.获取access_token:根据企业id和应用密钥获取access_token,并拼接请求url
-        String accessToken = wechatTokenCache.getIfPresent(ACCESS_TOKEN);
+        String accessToken = wechatTokenCache.getIfPresent(getTokenCaCheKey(corpSecret));
         if (StringUtils.isBlank(accessToken)) {
             log.error("发送文本消息获取token失败");
             return;
@@ -164,7 +176,7 @@ public class WeiXinServiceImpl implements WeiXinService {
         textCardMessage.setTouser(StringUtils.join(toArr, "|"));
         // 1.2必需
         textCardMessage.setMsgtype("textcard");
-        textCardMessage.setAgentid(wxCpProperties.getAgentId());
+        textCardMessage.setAgentid(agentId);
         WxTextCard wxTextCard = new WxTextCard();
         wxTextCard.setTitle(title);
         wxTextCard.setDescription(getVelocityMailText(dataMap, templateName));

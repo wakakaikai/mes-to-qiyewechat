@@ -21,19 +21,19 @@ public class WeiXinTest {
 
     @Test
     public void simpleEmailTest() {
-        String[] toArr = new String[] {"LiuZhiKai"};
-        weiXinService.sendSimpleText(toArr, "你好啊,志凯");
+        String[] toArr = new String[]{"LiuZhiKai"};
+        weiXinService.sendSimpleText(toArr, "你好啊,志凯", 1000002, "IgSvLlXC7RonN-ogM0PiK_UjQ1PN-ODR6RDf3u8X050");
         log.info(">>>企业微信发送消息");
     }
 
     @Test
     public void velocityTest() {
-        String[] toArr = new String[] {"LiuZhiKai"};
+        String[] toArr = new String[]{"LiuZhiKai"};
         Map<String, Object> dataMap = new HashMap<>();
         dataMap.put("line", System.lineSeparator());
         dataMap.put("title", "你叫什么名字");
         dataMap.put("content", "我叫志凯,是一个快乐的程序员");
-        weiXinService.sendVelocityText("你好啊", toArr, dataMap, "interface_tenwhy.vm");
+        weiXinService.sendVelocityText("你好啊", toArr, dataMap, "interface_tenwhy.vm", 1000002, "IgSvLlXC7RonN-ogM0PiK_UjQ1PN-ODR6RDf3u8X050");
         log.info(">>>企业微信发送消息成功");
     }
 }
